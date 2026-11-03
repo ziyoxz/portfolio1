@@ -1,0 +1,26 @@
+PHOTO & LOGO GUIDE — ALL FILES ARE ALREADY INCLUDED
+
+You do not need to add any photos or logos manually. Everything below is embedded in the assets folder in this ZIP.
+
+PHOTOGRAPHS
+- portrait.jpg — your portrait on the Home page
+- ydc-main-chair-august-2025.jpg — Youth Diplomatic Conference, August 2025 (Main Chair)
+- ydc-brics-june-2024.jpg — Youth Diplomatic Conference, June 2024 (BRICS+ Rapporteur)
+- scientific-practical-conference-2025.jpg — 8th Scientific-Practical Conference, Osh
+- timun-2023.jpg — TIMUN 2023
+- altuit-mun-2024.jpg — ALTUIT MUN 2024
+- bmu-mun-2024.jpg — BMU MUN 2024
+- altuit-students-council.jpg — ALTUIT Students’ Council
+
+TRANSPARENT PNG LOGOS
+- logo-altuit-mun.png — ALTUIT MUN project and leadership references
+- logo-altuit-students-council.png — ALTUIT Students’ Council and Argument Arena Debate Club
+- logo-bmu-mun.png — BMU MUN
+- logo-timun.png — TIMUN 2023
+- logo-ydc.png — both Youth Diplomatic Conference entries
+
+CERTIFICATES (PDF)
+- certificate-anti-corruption.pdf — UNODC / SPARK, Advanced Anti-Corruption: Prevention of Corruption
+- certificate-arms-trade-treaty.pdf — UNITAR / Arms Trade Treaty Annual Reporting Course
+
+To preview the site, extract the ZIP and open index.html. Keep the assets, css and js folders in the same location as the HTML pages.
