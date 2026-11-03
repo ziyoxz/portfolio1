@@ -7,36 +7,28 @@
   <title>Admin | Ziyo Abdullazizov</title>
   <style>
     * { box-sizing: border-box; }
-    body {
-      margin: 0; padding: 32px 18px; background: #f4f3ef; color: #222;
-      font: 16px/1.5 Arial, sans-serif;
-    }
+    body { margin: 0; padding: 32px 18px; background: #f4f3ef; color: #222; font: 16px/1.5 Arial, sans-serif; }
     main { max-width: 900px; margin: auto; }
     h1, h2 { line-height: 1.2; }
-    .panel {
-      background: #fff; border: 1px solid #ddd; border-radius: 14px;
-      padding: 22px; margin: 18px 0;
-    }
+    .panel { background: #fff; border: 1px solid #ddd; border-radius: 14px; padding: 22px; margin: 18px 0; }
     label { display: block; margin: 12px 0 5px; font-weight: 600; }
-    input, textarea {
-      width: 100%; padding: 11px; border: 1px solid #bbb; border-radius: 8px;
-      font: inherit;
-    }
+    input, textarea { width: 100%; padding: 11px; border: 1px solid #bbb; border-radius: 8px; font: inherit; }
     textarea { min-height: 100px; resize: vertical; }
-    button {
-      border: 0; border-radius: 8px; padding: 11px 16px; margin: 12px 8px 0 0;
-      background: #222; color: white; font: inherit; cursor: pointer;
-    }
+    button { border: 0; border-radius: 8px; padding: 11px 16px; margin: 12px 8px 0 0; background: #222; color: white; font: inherit; cursor: pointer; }
     button.secondary { background: #666; }
     button.danger { background: #a52a2a; }
-    .project {
-      display: flex; justify-content: space-between; gap: 16px; align-items: start;
-      border-top: 1px solid #ddd; padding: 14px 0;
-    }
+    .project { display: flex; justify-content: space-between; gap: 16px; align-items: start; border-top: 1px solid #ddd; padding: 14px 0; }
     .project p { margin: 4px 0; }
     .muted { color: #666; font-size: 14px; }
     #status { white-space: pre-wrap; }
     [hidden] { display: none !important; }
+    .preview { margin-top: 18px; border: 1px solid #ddd; border-radius: 12px; overflow: hidden; }
+    .preview img { display: block; width: 100%; max-height: 320px; object-fit: cover; background: #eee; }
+    .preview-content { padding: 16px; }
+    .preview-category { color: #666; font-size: 12px; letter-spacing: .08em; }
+    .preview h3 { margin: 8px 0; }
+    .preview-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .preview-tags span { background: #eee; border-radius: 20px; padding: 4px 9px; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -60,6 +52,7 @@
     <div class="panel">
       <button id="logout-button" class="secondary" type="button">Sign out</button>
       <h2 id="form-heading">Add a project</h2>
+
       <form id="project-form">
         <input id="project-id" type="hidden">
 
@@ -78,8 +71,12 @@
         <label for="description">Description</label>
         <textarea id="description"></textarea>
 
+        <label for="photo-file">Upload photo</label>
+        <input id="photo-file" type="file" accept="image/*">
+        <p class="muted">Choose an image from your computer. It will upload to Supabase Storage.</p>
+
         <label for="image-url">Image URL</label>
-        <input id="image-url" type="url" placeholder="https://ziyoabd.site/assets/photo.jpg">
+        <input id="image-url" type="url" placeholder="Uploaded image URL will appear here">
 
         <label for="tags">Tags (one per line)</label>
         <textarea id="tags" placeholder="Chairing&#10;Diplomacy&#10;Facilitation"></textarea>
@@ -87,9 +84,20 @@
         <label for="link">Project link (optional)</label>
         <input id="link" type="url">
 
-        <button type="submit">Save project</button>
+        <button id="save-button" type="submit">Save project</button>
         <button id="cancel-edit" class="secondary" type="button" hidden>Cancel edit</button>
       </form>
+
+      <div class="preview">
+        <img id="preview-image" alt="Project image preview" hidden>
+        <div class="preview-content">
+          <div class="preview-category" id="preview-category"></div>
+          <h3 id="preview-title">Project title</h3>
+          <strong id="preview-role"></strong>
+          <p id="preview-description"></p>
+          <div class="preview-tags" id="preview-tags"></div>
+        </div>
+      </div>
     </div>
 
     <div class="panel">
@@ -107,13 +115,43 @@
   const adminPanel = document.getElementById("admin-panel");
   const form = document.getElementById("project-form");
   const projectsList = document.getElementById("projects-list");
-
   const field = id => document.getElementById(id);
   const setStatus = message => { statusEl.textContent = message; };
+
+  let uploadedImagePath = null;
+  let localPreviewUrl = null;
 
   function showAdmin(isLoggedIn) {
     loginPanel.hidden = isLoggedIn;
     adminPanel.hidden = !isLoggedIn;
+  }
+
+  function updatePreview() {
+    field("preview-title").textContent = field("title").value || "Project title";
+    field("preview-role").textContent = field("role").value;
+    field("preview-category").textContent = field("category").value;
+    field("preview-description").textContent = field("description").value;
+
+    const tags = field("tags").value.split("\n").map(t => t.trim()).filter(Boolean);
+    const tagContainer = field("preview-tags");
+    tagContainer.replaceChildren();
+
+    tags.forEach(tag => {
+      const span = document.createElement("span");
+      span.textContent = tag;
+      tagContainer.appendChild(span);
+    });
+
+    const imageUrl = field("image-url").value.trim();
+    const image = field("preview-image");
+
+    if (imageUrl) {
+      image.src = imageUrl;
+      image.hidden = false;
+    } else {
+      image.removeAttribute("src");
+      image.hidden = true;
+    }
   }
 
   function resetForm() {
@@ -121,7 +159,50 @@
     field("project-id").value = "";
     field("form-heading").textContent = "Add a project";
     field("cancel-edit").hidden = true;
+    uploadedImagePath = null;
+
+    if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+    localPreviewUrl = null;
+    updatePreview();
   }
+
+  ["title", "role", "category", "description", "tags", "image-url"].forEach(id => {
+    field(id).addEventListener("input", updatePreview);
+  });
+
+  field("photo-file").addEventListener("change", async () => {
+    const file = field("photo-file").files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setStatus("Please select an image file.");
+      field("photo-file").value = "";
+      return;
+    }
+
+    setStatus("Uploading image…");
+
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+    const path = `${Date.now()}-${safeName}`;
+
+    const { error } = await supabaseClient.storage
+      .from("Photos")
+      .upload(path, file, { upsert: false });
+
+    if (error) {
+      setStatus("Image upload failed: " + error.message);
+      return;
+    }
+
+    const { data } = supabaseClient.storage
+      .from("Photos")
+      .getPublicUrl(path);
+
+    uploadedImagePath = path;
+    field("image-url").value = data.publicUrl;
+    updatePreview();
+    setStatus("Image uploaded. Preview updated.");
+  });
 
   async function loadProjects() {
     projectsList.replaceChildren();
@@ -183,6 +264,8 @@
     field("link").value = project.link || "";
     field("form-heading").textContent = "Edit project";
     field("cancel-edit").hidden = false;
+    uploadedImagePath = null;
+    updatePreview();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -205,6 +288,8 @@
 
   form.addEventListener("submit", async event => {
     event.preventDefault();
+    field("save-button").disabled = true;
+    setStatus("Saving project…");
 
     const id = field("project-id").value;
     const project = {
@@ -223,6 +308,7 @@
       : supabaseClient.from("projects").insert(project);
 
     const { error } = await query;
+    field("save-button").disabled = false;
 
     if (error) {
       setStatus("Could not save project: " + error.message);
@@ -264,7 +350,6 @@
   async function init() {
     const { data: { session } } = await supabaseClient.auth.getSession();
     showAdmin(Boolean(session));
-
     if (session) await loadProjects();
   }
 
