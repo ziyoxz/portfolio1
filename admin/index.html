@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f4f3ef">
+  <title>Admin | Ziyo Abdullazizov</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 32px 18px; background: #f4f3ef; color: #222;
+      font: 16px/1.5 Arial, sans-serif;
+    }
+    main { max-width: 900px; margin: auto; }
+    h1, h2 { line-height: 1.2; }
+    .panel {
+      background: #fff; border: 1px solid #ddd; border-radius: 14px;
+      padding: 22px; margin: 18px 0;
+    }
+    label { display: block; margin: 12px 0 5px; font-weight: 600; }
+    input, textarea {
+      width: 100%; padding: 11px; border: 1px solid #bbb; border-radius: 8px;
+      font: inherit;
+    }
+    textarea { min-height: 100px; resize: vertical; }
+    button {
+      border: 0; border-radius: 8px; padding: 11px 16px; margin: 12px 8px 0 0;
+      background: #222; color: white; font: inherit; cursor: pointer;
+    }
+    button.secondary { background: #666; }
+    button.danger { background: #a52a2a; }
+    .project {
+      display: flex; justify-content: space-between; gap: 16px; align-items: start;
+      border-top: 1px solid #ddd; padding: 14px 0;
+    }
+    .project p { margin: 4px 0; }
+    .muted { color: #666; font-size: 14px; }
+    #status { white-space: pre-wrap; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Projects Admin</h1>
+  <p class="muted">Sign in to manage portfolio projects.</p>
+  <p id="status" role="status"></p>
+
+  <section class="panel" id="login-panel">
+    <h2>Sign in</h2>
+    <form id="login-form">
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="username" required>
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password" required>
+      <button type="submit">Sign in</button>
+    </form>
+  </section>
+
+  <section id="admin-panel" hidden>
+    <div class="panel">
+      <button id="logout-button" class="secondary" type="button">Sign out</button>
+      <h2 id="form-heading">Add a project</h2>
+      <form id="project-form">
+        <input id="project-id" type="hidden">
+
+        <label for="title">Title *</label>
+        <input id="title" required>
+
+        <label for="role">Role</label>
+        <input id="role">
+
+        <label for="category">Category</label>
+        <input id="category" placeholder="MODEL UNITED NATIONS">
+
+        <label for="project-date">Project date</label>
+        <input id="project-date" type="date">
+
+        <label for="description">Description</label>
+        <textarea id="description"></textarea>
+
+        <label for="image-url">Image URL</label>
+        <input id="image-url" type="url" placeholder="https://ziyoabd.site/assets/photo.jpg">
+
+        <label for="tags">Tags (one per line)</label>
+        <textarea id="tags" placeholder="Chairing&#10;Diplomacy&#10;Facilitation"></textarea>
+
+        <label for="link">Project link (optional)</label>
+        <input id="link" type="url">
+
+        <button type="submit">Save project</button>
+        <button id="cancel-edit" class="secondary" type="button" hidden>Cancel edit</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2>Existing projects</h2>
+      <div id="projects-list"></div>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase.js"></script>
+<script>
+  const statusEl = document.getElementById("status");
+  const loginPanel = document.getElementById("login-panel");
+  const adminPanel = document.getElementById("admin-panel");
+  const form = document.getElementById("project-form");
+  const projectsList = document.getElementById("projects-list");
+
+  const field = id => document.getElementById(id);
+  const setStatus = message => { statusEl.textContent = message; };
+
+  function showAdmin(isLoggedIn) {
+    loginPanel.hidden = isLoggedIn;
+    adminPanel.hidden = !isLoggedIn;
+  }
+
+  function resetForm() {
+    form.reset();
+    field("project-id").value = "";
+    field("form-heading").textContent = "Add a project";
+    field("cancel-edit").hidden = true;
+  }
+
+  async function loadProjects() {
+    projectsList.replaceChildren();
+
+    const { data, error } = await supabaseClient
+      .from("projects")
+      .select("*")
+      .order("project_date", { ascending: false });
+
+    if (error) {
+      setStatus("Could not load projects: " + error.message);
+      return;
+    }
+
+    if (!data?.length) {
+      projectsList.textContent = "No projects found.";
+      return;
+    }
+
+    data.forEach(project => {
+      const item = document.createElement("div");
+      item.className = "project";
+
+      const details = document.createElement("div");
+      const title = document.createElement("strong");
+      title.textContent = project.title || "(Untitled)";
+      const meta = document.createElement("p");
+      meta.className = "muted";
+      meta.textContent = [project.category, project.role].filter(Boolean).join(" · ");
+      details.append(title, meta);
+
+      const actions = document.createElement("div");
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.textContent = "Edit";
+      edit.addEventListener("click", () => editProject(project));
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "danger";
+      remove.textContent = "Delete";
+      remove.addEventListener("click", () => deleteProject(project));
+
+      actions.append(edit, remove);
+      item.append(details, actions);
+      projectsList.append(item);
+    });
+  }
+
+  function editProject(project) {
+    field("project-id").value = project.id;
+    field("title").value = project.title || "";
+    field("role").value = project.role || "";
+    field("category").value = project.category || "";
+    field("project-date").value = project.project_date || "";
+    field("description").value = project.description || "";
+    field("image-url").value = project.image_url || "";
+    field("tags").value = Array.isArray(project.tags) ? project.tags.join("\n") : "";
+    field("link").value = project.link || "";
+    field("form-heading").textContent = "Edit project";
+    field("cancel-edit").hidden = false;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function deleteProject(project) {
+    if (!confirm(`Delete "${project.title}"?`)) return;
+
+    const { error } = await supabaseClient
+      .from("projects")
+      .delete()
+      .eq("id", project.id);
+
+    if (error) {
+      setStatus("Could not delete project: " + error.message);
+      return;
+    }
+
+    setStatus("Project deleted.");
+    await loadProjects();
+  }
+
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const id = field("project-id").value;
+    const project = {
+      title: field("title").value.trim(),
+      role: field("role").value.trim() || null,
+      category: field("category").value.trim() || null,
+      project_date: field("project-date").value || null,
+      description: field("description").value.trim() || null,
+      image_url: field("image-url").value.trim() || null,
+      tags: field("tags").value.split("\n").map(tag => tag.trim()).filter(Boolean),
+      link: field("link").value.trim() || null
+    };
+
+    const query = id
+      ? supabaseClient.from("projects").update(project).eq("id", id)
+      : supabaseClient.from("projects").insert(project);
+
+    const { error } = await query;
+
+    if (error) {
+      setStatus("Could not save project: " + error.message);
+      return;
+    }
+
+    setStatus("Project saved.");
+    resetForm();
+    await loadProjects();
+  });
+
+  field("cancel-edit").addEventListener("click", resetForm);
+
+  field("login-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    setStatus("Signing in…");
+
+    const { error } = await supabaseClient.auth.signInWithPassword({
+      email: field("email").value.trim(),
+      password: field("password").value
+    });
+
+    if (error) {
+      setStatus("Sign-in failed: " + error.message);
+      return;
+    }
+
+    setStatus("Signed in.");
+    showAdmin(true);
+    await loadProjects();
+  });
+
+  field("logout-button").addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    showAdmin(false);
+    setStatus("Signed out.");
+  });
+
+  async function init() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    showAdmin(Boolean(session));
+
+    if (session) await loadProjects();
+  }
+
+  init();
+</script>
+</body>
+</html>
